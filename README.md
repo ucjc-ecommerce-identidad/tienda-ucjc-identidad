@@ -8,9 +8,9 @@ Custom element: `<ucjc-identidad>`
 
 - Sebastián Blanco (responsable) - [@sebasxblanco](https://github.com/sebasxblanco)
 - Olivia Troitiño Frydrych - [@oliviatroitino](https://github.com/oliviatroitino)
-- Ingrid
-- [@FerMelero](https://github.com/FerMelero)
-- [@Giordano-jpg](https://github.com/Giordano-jpg)
+- Ingrid Carvalhais Silva
+- Fernando Melero - [@FerMelero](https://github.com/FerMelero)
+- Giordano - [@Giordano-jpg](https://github.com/Giordano-jpg)
 
 ## Cómo arrancarlo
 
