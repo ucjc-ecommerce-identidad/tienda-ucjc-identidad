@@ -6,11 +6,13 @@ Custom element: `<ucjc-identidad>`
 
 ## Equipo
 
-- Sebastián Blanco (responsable) - [@sebasxblanco](https://github.com/sebasxblanco)
-- Olivia Troitiño Frydrych - [@oliviatroitino](https://github.com/oliviatroitino)
-- Ingrid Carvalhais Silva
-- Fernando Melero - [@FerMelero](https://github.com/FerMelero)
-- Giordano - [@Giordano-jpg](https://github.com/Giordano-jpg)
+| Nombre | Correo | GitHub |
+|---|---|---|
+| Sebastián Blanco (responsable) | | [@sebasxblanco](https://github.com/sebasxblanco) |
+| Olivia Troitiño Frydrych | olivia.troitinofrydrych@alumno.ucjc.edu | [@oliviatroitino](https://github.com/oliviatroitino) |
+| Ingrid Carvalhais Silva | ingrid.carvalhaissilva@alumno.ucjc.edu | |
+| Fernando Melero Muñoz | fmeleromunoz@gmail.com | [@FerMelero](https://github.com/FerMelero) |
+| Giordano Fabio Castilla García | giordano.fcg@gmail.com | [@Giordano-jpg](https://github.com/Giordano-jpg) |
 
 ## Cómo arrancarlo
 
