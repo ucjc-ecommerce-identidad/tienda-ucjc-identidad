@@ -65,3 +65,11 @@ Requisito: **Node ≥ 20** (el workflow usa Node 22).
 5. URL esperada: `https://<usuario-o-org>.github.io/<repo>/v0.2.0/remote.js`.
 
 Esta pieza exporta `{ nombre, version }` y registra su custom element al importar el módulo.
+
+### Tests
+
+```bash
+npm test
+```
+
+Comprueban el custom element, el `export default` y el flujo mínimo de eventos `@1`.
