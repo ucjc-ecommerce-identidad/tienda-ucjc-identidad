@@ -21,38 +21,27 @@ npm install
 npm run dev
 ```
 
-## Borrador de eventos
+## Eventos
 
-Los eventos se lanzan en `window` como `CustomEvent` (con `bubbles` y `composed` a true). El nombre lleva la versión y el `detail` también, para poder comprobarla al recibirlo.
+Los eventos se lanzan en `window` como `CustomEvent`. El nombre lleva la versión (`@1`); el `detail` no.
 
 ### Eventos que emitimos
 
-`ucjc:sesion-cambiada:v1`: se lanza al iniciar o cerrar sesión, y una vez al cargar la pieza con el estado actual.
+`ucjc:identidad:sesion-cambiada@1`: se lanza al iniciar o cerrar sesión, y una vez al cargar la pieza con el estado actual. Lo usan Compra (para confirmar el pedido) y Datos (para cargar los pedidos del usuario).
 
 ```json
 {
-  "version": 1,
   "autenticado": true,
-  "usuario": { "id": "u-123", "nombre": "Ana Pérez", "email": "ana@alumno.ucjc.edu" },
+  "usuario": { "id": "u-123", "email": "ana@alumno.ucjc.edu", "nombre": "Ana Pérez" },
   "momento": "2026-10-26T10:00:00Z"
 }
 ```
 
-Si se cierra sesión, va con `autenticado: false` y `usuario: null`. Lo usarían Compra (para confirmar el pedido) y Datos (para cargar los pedidos del usuario).
+Si se cierra sesión, va con `autenticado: false` y `usuario: null`. Permisos y roles se quedan dentro de la pieza y no salen al bus.
 
-### Eventos que escuchamos
+### Pendiente (otro PR)
 
-`ucjc:sesion-solicitada:v1`: otra pieza pide que el usuario inicie sesión, por ejemplo Compra al confirmar un pedido sin sesión. Mostramos el login y al terminar lanzamos `ucjc:sesion-cambiada:v1`.
-
-```json
-{ "version": 1, "origen": "compra", "motivo": "checkout" }
-```
-
-`ucjc:sesion-consultada:v1`: una pieza que carga más tarde pregunta por la sesión actual y le respondemos volviendo a lanzar `ucjc:sesion-cambiada:v1`.
-
-```json
-{ "version": 1, "origen": "datos" }
-```
+`sesion-solicitada` y `sesion-consultada` quedan fuera de `@1`.
 
 ## Cómo se publica (contrato de carga del shell)
 
