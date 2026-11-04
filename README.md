@@ -53,6 +53,14 @@ Requisito: **Node ≥ 20** (el workflow usa Node 22).
 4. En el repo: *Settings → Pages* → Source: rama **`gh-pages`**, carpeta **`/`**.
 5. URL esperada: `https://<usuario-o-org>.github.io/<repo>/v0.2.0/remote.js`.
 
+Cada release publica también su **página propia** (`demo/index.html` → `dist/index.html`), que carga el mismo `remote.js` y muestra los eventos emitidos:
+
+- Última release: https://ucjc-ecommerce-identidad.github.io/tienda-ucjc-identidad/ (redirige a la carpeta del último tag)
+- Una release concreta: `https://ucjc-ecommerce-identidad.github.io/tienda-ucjc-identidad/vX.Y.Z/`
+- Para el shell: `https://ucjc-ecommerce-identidad.github.io/tienda-ucjc-identidad/vX.Y.Z/remote.js`
+
+Un tag no se mueve nunca: si hay que corregir algo, se publica una versión nueva.
+
 Esta pieza exporta `{ nombre, version }` y registra su custom element al importar el módulo.
 
 ### Tests
@@ -61,4 +69,4 @@ Esta pieza exporta `{ nombre, version }` y registra su custom element al importa
 npm test
 ```
 
-Comprueban el custom element, el `export default` y el flujo mínimo de eventos `@1`.
+Comprueban el custom element, el `export default`, el evento `@1`, login correcto e incorrecto, registro y email repetido.

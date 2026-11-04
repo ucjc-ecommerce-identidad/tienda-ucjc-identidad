@@ -23,6 +23,10 @@ const USUARIOS = [
 
 const DEMO = USUARIOS[0]; // Usuario demo por defecto
 
+// Escapa texto antes de meterlo en innerHTML (el nombre lo escribe el usuario al registrarse).
+const esc = (t) =>
+  String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
 const css = `
   :host { display:block; font:15px/1.45 system-ui,sans-serif; color:#152033; }
   .box { background:#f7f9fc; border:1px solid #d7dee8; border-radius:12px; padding:1rem 1.1rem; max-width:22rem; }
@@ -42,7 +46,8 @@ class UcjcIdentidad extends HTMLElement {
   #error = '';
 
   connectedCallback() {
-    this.attachShadow({ mode: 'open' });
+    // El shell puede quitar y volver a poner el elemento: el shadow root solo se crea una vez.
+    if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
     this.#pintar();
     this.#emitir();
   }
@@ -124,7 +129,7 @@ class UcjcIdentidad extends HTMLElement {
         <div class="box">
           <h2>Identidad</h2>
           <p class="estado ok">Sesión activa</p>
-          <p><b>${this.#usuario.nombre}</b><br>${this.#usuario.email}<br><code>${this.#usuario.id}</code></p>
+          <p><b>${esc(this.#usuario.nombre)}</b><br>${esc(this.#usuario.email)}<br><code>${esc(this.#usuario.id)}</code></p>
           <div class="row">
             <button type="button" data-a="out" class="sec">Cerrar sesión</button>
           </div>
