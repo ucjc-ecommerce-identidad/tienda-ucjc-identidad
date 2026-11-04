@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm ci && npm run build
+      - run: npm ci && npm test && npm run build
       - name: Publicar dist/ en gh-pages/${{ github.ref_name }}/
         run: |
           git fetch origin gh-pages || true
@@ -27,6 +27,9 @@ jobs:
           fi
           mkdir -p "/tmp/pages/${GITHUB_REF_NAME}"
           cp -r dist/* "/tmp/pages/${GITHUB_REF_NAME}/"
+          # La raíz de Pages redirige a la página propia de la última release.
+          printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./%s/"><title>Identidad</title><a href="./%s/">Ir a %s</a>\n' \
+            "${GITHUB_REF_NAME}" "${GITHUB_REF_NAME}" "${GITHUB_REF_NAME}" > /tmp/pages/index.html
           touch /tmp/pages/.nojekyll
           cd /tmp/pages
           git config user.name "release-bot"
