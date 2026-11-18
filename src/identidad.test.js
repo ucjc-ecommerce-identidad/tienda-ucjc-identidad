@@ -7,7 +7,7 @@ describe('ucjc-identidad', () => {
   });
 
   it('exporta metadatos de carga', () => {
-    expect(mod).toEqual({ nombre: 'identidad', version: '0.2.2' });
+    expect(mod).toEqual({ nombre: 'identidad', version: '0.2.3' });
   });
 
   it('emite sesion-cambiada al conectar y al login demo', async () => {
@@ -81,6 +81,49 @@ describe('ucjc-identidad', () => {
     pulsar(el, 'registrar');
     expect(el.shadowRoot.querySelector('img')).toBeNull();
     expect(el.shadowRoot.textContent).toContain('<img src=x>');
+    fin();
+  });
+
+  it('Enter en el formulario inicia sesión (submit, no solo clic)', () => {
+    const { el, spy, fin } = montar();
+    rellenar(el, { email: 'maria.garcia@alumno.ucjc.edu', password: 'maria456' });
+    const form = el.shadowRoot.querySelector('form');
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(spy.mock.calls.at(-1)[0].detail).toMatchObject({ autenticado: true, usuario: { id: 'u-mariagarcia' } });
+    fin();
+  });
+
+  it('el error se anuncia (role=alert), marca el campo y le lleva el foco', () => {
+    const { el, fin } = montar();
+    rellenar(el, { email: 'demo@alumno.ucjc.edu', password: 'mala' });
+    pulsar(el, 'in');
+    const alerta = el.shadowRoot.querySelector('[role="alert"]');
+    expect(alerta.textContent).toContain('Email o contraseña incorrectos');
+    const pass = el.shadowRoot.querySelector('[data-f="password"]');
+    expect(pass.getAttribute('aria-invalid')).toBe('true');
+    expect(pass.getAttribute('aria-describedby')).toBe('error');
+    expect(el.shadowRoot.activeElement).toBe(pass);
+    fin();
+  });
+
+  it('login con campos vacíos pide rellenarlos y no emite', () => {
+    const { el, spy, fin } = montar();
+    const antes = spy.mock.calls.length;
+    pulsar(el, 'in');
+    expect(spy.mock.calls.length).toBe(antes);
+    expect(el.shadowRoot.querySelector('[role="alert"]').textContent).toContain('Escribe tu email y tu contraseña');
+    fin();
+  });
+
+  it('registro rechaza un email con formato inválido', () => {
+    const { el, spy, fin } = montar();
+    const antes = spy.mock.calls.length;
+    pulsar(el, 'ir-registro');
+    rellenar(el, { 'reg-email': 'sin-arroba', 'reg-nombre': 'X', 'reg-password': 'x' });
+    pulsar(el, 'registrar');
+    expect(spy.mock.calls.length).toBe(antes);
+    expect(el.shadowRoot.querySelector('[role="alert"]').textContent).toContain('formato válido');
+    expect(el.shadowRoot.querySelector('[data-f="reg-email"]').getAttribute('aria-invalid')).toBe('true');
     fin();
   });
 
