@@ -40,6 +40,8 @@ const css = `
   .row { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.75rem; }
   button { font:inherit; border:0; border-radius:8px; padding:.45rem .85rem; cursor:pointer; background:#0f3d7a; color:#fff; }
   button.sec { background:#e7ecf3; color:#152033; }
+  button.danger { background:#b3261e; color:#fff; }
+  button.danger:hover { background:#8c1d18; }
   input:focus-visible, button:focus-visible { outline:3px solid #f2a900; outline-offset:2px; }
   .estado { margin-top:.65rem; font-size:.9rem; }
   .ok { color:#0b6b3a; } .ko { color:#8a3b12; }
@@ -176,7 +178,7 @@ class UcjcIdentidad extends HTMLElement {
           <p class="estado ok" role="status">Sesión activa</p>
           <p><b>${esc(this.#usuario.nombre)}</b><br>${esc(this.#usuario.email)}<br><code>${esc(this.#usuario.id)}</code></p>
           <div class="row">
-            <button type="button" data-a="out" class="sec">Cerrar sesión</button>
+            <button type="button" data-a="out" class="danger">Cerrar sesión</button>
           </div>
         </div>`;
       this.shadowRoot.querySelector('[data-a="out"]').onclick = () => this.#logout();
