@@ -7,7 +7,7 @@ describe('ucjc-identidad', () => {
   });
 
   it('exporta metadatos de carga', () => {
-    expect(mod).toEqual({ nombre: 'identidad', version: '0.2.4' });
+    expect(mod).toEqual({ nombre: 'identidad', version: '0.2.5' });
   });
 
   it('emite sesion-cambiada al conectar y al login demo', async () => {
@@ -137,6 +137,15 @@ describe('ucjc-identidad', () => {
     window.removeEventListener('error', errores);
     expect(errores).not.toHaveBeenCalled();
     expect(el.shadowRoot.querySelector('h2')).not.toBeNull();
+    fin();
+  });
+
+  it('v0.2.5: la sesión muestra avatar con iniciales y el id', () => {
+    const { el, fin } = montar();
+    pulsar(el, 'demo');
+    expect(el.shadowRoot.querySelector('.avatar').textContent).toBe('UD');
+    expect(el.shadowRoot.querySelector('code').textContent).toBe('u-demo');
+    expect(el.shadowRoot.querySelector('[data-a="out"]').classList.contains('danger')).toBe(true);
     fin();
   });
 });
