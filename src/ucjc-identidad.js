@@ -4,13 +4,14 @@
 //   lector -> validador -> cuentas -> pintar -> foco -> anuncio -> evento hacia fuera.
 //   Vistas: entrar, crear cuenta, selector de cuenta de un proveedor simulado (y «usar otra cuenta»),
 //   recuperar contraseña (email -> aviso -> enlace demo -> contraseña nueva) y sesión activa.
+//   Al cambiar de vista marca la dirección de la transición (data-anim): «adelante», «atras», «sesion» o «inicio».
 // Qué no hace: no valida (validador.js), no escribe HTML de vistas (vistas.js), no decide ARIA (accesibilidad.js),
 //   no mueve el foco por su cuenta (foco.js) y no construye el detail del evento (eventos.js).
 // Qué toca: solo su Shadow DOM y, a través de eventos.js, el evento sesion-cambiada@1 en window.
 
 import { css } from './estilos.js';
 import {
-  vistaLogin, vistaRegistro, vistaSesion, vistaSelector, vistaOtraCuenta, vistaOlvide, vistaEnlace, vistaClaveNueva,
+  vistaLogin, vistaRegistro, vistaSesion, vistaSelector, vistaOtraCuenta, vistaOlvide, vistaEnlace, vistaClaveNueva, FONDO,
 } from './vistas.js';
 import { proveedor } from './proveedores.js';
 import { leer } from './lector.js';
@@ -30,13 +31,15 @@ class UcjcIdentidad extends HTMLElement {
   #prov = ''; // id del proveedor elegido
   #recEmail = ''; // email de la recuperación de contraseña en curso
   #exito = ''; // aviso de «contraseña cambiada» para la próxima vez que se pinte el login (se muestra una vez)
+  #desde = null; // hora de inicio de la sesión (solo para mostrarla; no sale en el evento)
 
   connectedCallback() {
     // El shell puede quitar y volver a poner el elemento: el shadow root solo se crea una vez.
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
       // La región viva vive fuera de #raiz: no se repinta y por eso sus avisos sí se anuncian.
-      this.shadowRoot.innerHTML = `<style>${css}</style><div class="sr" id="vivo" role="status"></div><div id="raiz"></div>`;
+      this.shadowRoot.innerHTML = `<style>${css}</style><div class="sr" id="vivo" role="status"></div>
+        <div class="escena">${FONDO}<div class="contenedor"><div id="raiz"></div></div></div>`;
       // Esc cancela el selector de proveedor y la recuperación de contraseña, y devuelve el foco al control de origen.
       this.shadowRoot.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape' || !['selector', 'otra', 'olvide', 'enlace', 'nueva'].includes(this.#vista)) return;
@@ -44,19 +47,32 @@ class UcjcIdentidad extends HTMLElement {
         this.#cancelar();
       });
     }
-    this.#pintar();
+    this.#pintar(null, 'inicio');
     emitirSesion(this.#usuario);
+  }
+
+  // Profundidad de cada vista: ir a una más profunda desliza «adelante»; volver, «atras».
+  static #NIVEL = { login: 0, registro: 1, selector: 1, olvide: 1, otra: 2, enlace: 2, nueva: 3 };
+  #direccion(desde, hacia) {
+    const n = UcjcIdentidad.#NIVEL;
+    return n[hacia] >= n[desde] ? 'adelante' : 'atras';
   }
 
   // `foco`: 'titulo' (vista nueva), 'error' (primer campo inválido), { sel } (un control concreto, al cancelar)
   // o null (al cargar no se roba el foco).
-  #pintar(foco = null) {
+  // `anim`: transición de entrada ('' = ninguna, p. ej. al repintar por un error).
+  #pintar(foco = null, anim = '') {
     const raiz = this.shadowRoot.getElementById('raiz');
+    raiz.dataset.anim = anim;
+    // Antes de repintar: alto de la tarjeta y qué bloques hay, para que la nueva se adapte sin saltos.
+    const vieja = raiz.querySelector('.tarjeta');
+    const altoAntes = vieja ? vieja.getBoundingClientRect().height : 0;
+    const antes = new Set(vieja ? [...vieja.children].map((n) => (n.classList.remove('igual'), n.outerHTML)) : []);
     const estado = { valores: this.#valores, errores: this.#errores, resumen: this.#resumen };
     const exito = this.#exito;
     this.#exito = '';
 
-    if (this.#usuario) raiz.innerHTML = vistaSesion(this.#usuario);
+    if (this.#usuario) raiz.innerHTML = vistaSesion(this.#usuario, this.#desde ?? new Date());
     else {
       const p = proveedor(this.#prov);
       const vistas = {
@@ -72,12 +88,41 @@ class UcjcIdentidad extends HTMLElement {
     }
 
     this.#conectar(raiz);
+    this.#adaptar(raiz.querySelector('.tarjeta'), { antes, altoAntes, anim });
 
     if (foco === 'titulo') enfocarTitulo(this.shadowRoot);
     else if (foco === 'error') {
       const primero = Object.keys(this.#errores)[0];
       if (primero) enfocarCampo(this.shadowRoot, primero);
     } else if (foco?.sel) enfocarSelector(this.shadowRoot, foco.sel);
+  }
+
+  // La tarjeta se adapta en vez de cambiar de golpe:
+  //   - los bloques que no cambian (p. ej. el logo) se marcan .igual y no se animan. Si el logo solo cambia el
+  //     candado, también se queda quieto y solo se anima el arco (data-candado = «abre» o «cierra»);
+  //   - el alto pasa suavemente del anterior al nuevo (Web Animations);
+  //   - el contenido cambia directamente (sin fundido); al entrar en la cuenta el perfil sube (CSS).
+  // Con «reducir movimiento» solo se marca lo que no cambia; nada se mueve.
+  #adaptar(tarjeta, { antes, altoAntes, anim }) {
+    if (!tarjeta) return;
+    const sinCandado = (h) => h.replace(/ abierto/g, '');
+    const antesSinCandado = new Set([...antes].map(sinCandado));
+    for (const n of tarjeta.children) {
+      if (antes.has(n.outerHTML)) n.classList.add('igual');
+      else if (n.classList.contains('logo') && antesSinCandado.has(sinCandado(n.outerHTML))) {
+        n.classList.add('igual');
+        tarjeta.dataset.candado = n.querySelector('.abierto') ? 'abre' : 'cierra';
+      }
+    }
+    const quieto = !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (quieto || !altoAntes || anim === 'inicio' || typeof tarjeta.animate !== 'function') return;
+
+    const altoDespues = tarjeta.getBoundingClientRect().height;
+    if (Math.abs(altoDespues - altoAntes) >= 2) {
+      tarjeta.style.overflow = 'hidden';
+      const a = tarjeta.animate([{ height: `${altoAntes}px` }, { height: `${altoDespues}px` }], { duration: 460, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      a.onfinish = a.oncancel = () => (tarjeta.style.overflow = '');
+    }
   }
 
   // Gestor de eventos de entrada: cada vista conecta solo los controles que tiene.
@@ -112,11 +157,12 @@ class UcjcIdentidad extends HTMLElement {
     en('volver-cuentas', () => this.#cancelar());
   }
 
-  // Cambio de vista simple: limpia los errores y pinta.
+  // Cambio de vista simple: limpia los errores y pinta con la transición que toca.
   #ir(vista, foco) {
+    const anim = this.#direccion(this.#vista, vista);
     this.#vista = vista;
     this.#limpiarErrores();
-    this.#pintar(foco);
+    this.#pintar(foco, anim);
   }
 
   // Guarda lo escrito en la vista actual para no pedirlo de nuevo en la siguiente (WCAG 3.3.7).
@@ -134,7 +180,7 @@ class UcjcIdentidad extends HTMLElement {
     if (this.#vista === 'selector') {
       this.#vista = this.#origen;
       this.#limpiarErrores();
-      this.#pintar({ sel: `[data-a="prov"][data-p="${this.#prov}"]` });
+      this.#pintar({ sel: `[data-a="prov"][data-p="${this.#prov}"]` }, 'atras');
     } else if (this.#vista === 'otra') {
       this.#ir('selector', { sel: '[data-a="otra"]' });
     } else {
@@ -201,18 +247,20 @@ class UcjcIdentidad extends HTMLElement {
   // `via`: « con Google» cuando se entra con un proveedor simulado (solo cambia el texto del anuncio).
   #abrirSesion(cuenta, prefijo = '', via = '') {
     this.#usuario = cuenta;
+    this.#desde = new Date();
     this.#valores = { email: '', nombre: '' };
     this.#limpiarErrores();
-    this.#pintar('titulo');
+    this.#pintar('titulo', 'sesion');
     anunciar(this.shadowRoot, `${prefijo}Sesión iniciada${via} como ${cuenta.nombre}.`);
     emitirSesion(this.#usuario);
   }
 
   #cerrarSesion() {
     this.#usuario = null;
+    this.#desde = null;
     this.#vista = 'login';
     this.#limpiarErrores();
-    this.#pintar('titulo');
+    this.#pintar('titulo', 'atras');
     anunciar(this.shadowRoot, 'Sesión cerrada.');
     emitirSesion(null);
   }
@@ -246,7 +294,7 @@ class UcjcIdentidad extends HTMLElement {
     this.#conProveedor(datos['prov-email']);
   }
 
-  // --- Recuperar contraseña (modo demo): ningún paso emite sesion-cambiada@1 ---
+  // --- Recuperar contraseña (simulada): ningún paso emite sesion-cambiada@1 ---
 
   #abrirOlvide() {
     this.#recordar();

@@ -80,13 +80,13 @@ describe('botones de proveedor', () => {
 });
 
 describe('selector de cuenta', () => {
-  it('se abre con el aviso «Modo demo», el foco en el título, las cuentas demo y «Usar otra cuenta»; no emite nada', () => {
+  it('se abre con el aviso de simulación, el foco en el título, las cuentas demo y «Usar otra cuenta»; no emite nada', () => {
     const { el, spy, fin } = montar();
     const n = spy.mock.calls.length;
     prov(el, 'google');
     expect(titulo(el)).toBe('Elige una cuenta de Google');
     expect(el.shadowRoot.activeElement).toBe(q(el, 'h2'));
-    expect(q(el, '.aviso').textContent).toBe('Modo demo: no contacta con Google.');
+    expect(q(el, '.aviso').textContent).toBe('Esto es una simulación y no se conecta con Google.');
     expect(qa(el, '[data-a="cuenta"]').map((b) => b.dataset.email)).toEqual([
       'demo@alumno.ucjc.edu',
       'juan.perez@alumno.ucjc.edu',
@@ -100,10 +100,10 @@ describe('selector de cuenta', () => {
   it('el aviso nombra al proveedor elegido', () => {
     const { el, fin } = montar();
     prov(el, 'microsoft');
-    expect(q(el, '.aviso').textContent).toBe('Modo demo: no contacta con Microsoft.');
+    expect(q(el, '.aviso').textContent).toBe('Esto es una simulación y no se conecta con Microsoft.');
     esc(el);
     prov(el, 'github');
-    expect(q(el, '.aviso').textContent).toBe('Modo demo: no contacta con GitHub.');
+    expect(q(el, '.aviso').textContent).toBe('Esto es una simulación y no se conecta con GitHub.');
     fin();
   });
 
@@ -251,7 +251,7 @@ describe('«Usar otra cuenta»', () => {
   });
 });
 
-describe('recuperar contraseña (modo demo)', () => {
+describe('recuperar contraseña (simulada)', () => {
   const aClave = (el, email) => {
     pulsar(el, 'olvide');
     rellenar(el, { 'rec-email': email });
@@ -266,7 +266,7 @@ describe('recuperar contraseña (modo demo)', () => {
     expect(titulo(el)).toBe('Recupera tu contraseña');
     expect(el.shadowRoot.activeElement).toBe(q(el, 'h2'));
     expect(campo(el, 'rec-email').value).toBe('juan.perez@alumno.ucjc.edu');
-    expect(q(el, '.aviso').textContent).toBe('Modo demo: no se envía ningún correo.');
+    expect(q(el, '.aviso').textContent).toBe('Esto es una simulación y no se envía ningún correo.');
     fin();
   });
 
