@@ -6,6 +6,7 @@
 // Contrastes calculados (WCAG 2.2): texto >= 4,5:1; borde de campos y anillo de foco >= 3:1 (1.4.11).
 //   #5b6577/#fff 5,9 · #334155/#fff 10,3 · #0b6b3a/#e7f6ee 5,9 · #8a4b00/#fff3e0 6,2
 //   #b3261e/#fff 6,5 · #7a1d0b/#fdecea 9,1 · borde campo #7b8699/#fbfcfe 3,6 · foco #1e3a8a/#fff 10,4
+//   aviso #1f2d46/#eef2f8 12,3 · botones de proveedor y cuenta: #0f172a/#fff 17,9 (borde #7b8699 3,6:1)
 // Objetivos táctiles: botones, campos y enlaces de 44 px de alto (mínimo exigido: 24 px, criterio 2.5.8).
 
 export const css = `
@@ -21,8 +22,10 @@ export const css = `
     position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
     clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
   }
+  /* #raiz mide el ancho real de la tarjeta: los proveedores pasan a vertical cuando no caben en fila. */
+  #raiz { max-width:22rem; container-type:inline-size; }
   .box {
-    width:100%; max-width:22rem; background:#fff; border:1px solid var(--borde); border-radius:16px; padding:1.25rem;
+    width:100%; background:#fff; border:1px solid var(--borde); border-radius:16px; padding:1.25rem;
     box-shadow:0 1px 2px rgba(15,23,42,.04), 0 12px 28px -16px rgba(15,23,42,.28);
   }
   .cab { display:flex; align-items:center; gap:.75rem; margin-bottom:1rem; }
@@ -119,6 +122,34 @@ export const css = `
     display:inline-block; padding:.05rem .45rem; border-radius:6px; background:#eef2f8; color:#334155;
     font:.75rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
   }
+  .olvide { margin:.15rem 0 0; }
+  .olvide .enlace { padding-left:0; padding-right:0; }
+  .olvide + .acciones { margin-top:.6rem; }
+  .texto { margin:.85rem 0 0; font-size:.9rem; color:#334155; overflow-wrap:anywhere; }
+  /* Avisos informativos («modo demo», confirmaciones): #1f2d46 sobre #eef2f8 = 11,9:1 */
+  .aviso {
+    display:flex; gap:.5rem; align-items:flex-start; margin:0 0 .25rem; padding:.55rem .7rem; border-radius:10px;
+    background:#eef2f8; border:1px solid #cfd8e6; color:#1f2d46; font-size:.84rem;
+  }
+  .aviso svg { flex:none; width:1rem; height:1rem; margin-top:.15rem; color:var(--marca); }
+  .aviso + .error, .aviso + label { margin-top:.6rem; }
+  /* Proveedores simulados: tres botones en fila; en vertical si la tarjeta es estrecha (p. ej. a 320 px). */
+  .provs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.5rem; }
+  .prov { min-width:0; gap:.4rem; padding:0 .35rem; font-size:.82rem; background:#fff; color:var(--texto); border-color:var(--borde-campo); }
+  .prov:hover { background:#f4f6fa; }
+  .prov svg { width:1.1rem; height:1.1rem; }
+  @container (max-width:21rem) { .provs { grid-template-columns:1fr; } }
+  /* Selector de cuenta */
+  .cuentas { list-style:none; margin:.9rem 0 0; padding:0; display:grid; gap:.5rem; }
+  .cuenta { justify-content:flex-start; gap:.75rem; min-height:3.5rem; padding:.45rem .75rem; text-align:left; background:#fff; color:var(--texto); border-color:var(--borde-campo); }
+  .cuenta:hover { background:#f4f6fa; }
+  .cuenta .av {
+    flex:none; width:2.25rem; height:2.25rem; border-radius:50%; display:grid; place-items:center; color:#fff;
+    font-size:.85rem; font-weight:700; background:linear-gradient(135deg, #3b63d1, var(--marca-osc));
+  }
+  .cuenta[data-a="otra"] .av { background:#eef2f8; color:var(--marca); font-size:1.2rem; }
+  .cuenta .txt { min-width:0; display:grid; }
+  .cuenta .correo { color:var(--tenue); font-size:.8rem; font-weight:400; overflow-wrap:anywhere; }
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; } button:active { transform:none; } }
   @media (forced-colors: active) { .estado::before { background:CanvasText; } input:focus-visible, button:focus-visible { outline-color:Highlight; } }
 `;

@@ -2,17 +2,22 @@
 // Qué hace: guarda el estado (sesión, vista, errores, lo escrito), pinta la vista que toca en el Shadow DOM,
 //   conecta los eventos de entrada (clic, envío) y llama al resto de roles en orden:
 //   lector -> validador -> cuentas -> pintar -> foco -> anuncio -> evento hacia fuera.
+//   Vistas: entrar, crear cuenta, selector de cuenta de un proveedor simulado (y «usar otra cuenta»),
+//   recuperar contraseña (email -> aviso -> enlace demo -> contraseña nueva) y sesión activa.
 // Qué no hace: no valida (validador.js), no escribe HTML de vistas (vistas.js), no decide ARIA (accesibilidad.js),
 //   no mueve el foco por su cuenta (foco.js) y no construye el detail del evento (eventos.js).
 // Qué toca: solo su Shadow DOM y, a través de eventos.js, el evento sesion-cambiada@1 en window.
 
 import { css } from './estilos.js';
-import { vistaLogin, vistaRegistro, vistaSesion } from './vistas.js';
+import {
+  vistaLogin, vistaRegistro, vistaSesion, vistaSelector, vistaOtraCuenta, vistaOlvide, vistaEnlace, vistaClaveNueva,
+} from './vistas.js';
+import { proveedor } from './proveedores.js';
 import { leer } from './lector.js';
-import { validarLogin, validarRegistro } from './validador.js';
-import { buscar, existe, registrar, DEMO } from './cuentas.js';
+import { validarLogin, validarRegistro, validarEmail, validarClaveNueva } from './validador.js';
+import { buscar, existe, registrar, cuentasDemo, entrarOCrear, cambiarPassword, DEMO } from './cuentas.js';
 import { anunciar } from './accesibilidad.js';
-import { enfocarCampo, enfocarTitulo } from './foco.js';
+import { enfocarCampo, enfocarTitulo, enfocarSelector } from './foco.js';
 import { emitirSesion } from './eventos.js';
 
 class UcjcIdentidad extends HTMLElement {
@@ -21,6 +26,10 @@ class UcjcIdentidad extends HTMLElement {
   #resumen = ''; // texto del aviso de arriba (role="alert")
   #errores = {}; // { campo: mensaje|null } de los campos que fallaron en el último envío
   #valores = { email: '', nombre: '' }; // lo escrito que se conserva (la contraseña nunca)
+  #origen = 'login'; // vista desde la que se abrió el selector de proveedor (a ella se vuelve al cancelar)
+  #prov = ''; // id del proveedor elegido
+  #recEmail = ''; // email de la recuperación de contraseña en curso
+  #exito = ''; // aviso de «contraseña cambiada» para la próxima vez que se pinte el login (se muestra una vez)
 
   connectedCallback() {
     // El shell puede quitar y volver a poner el elemento: el shadow root solo se crea una vez.
@@ -28,47 +37,110 @@ class UcjcIdentidad extends HTMLElement {
       this.attachShadow({ mode: 'open' });
       // La región viva vive fuera de #raiz: no se repinta y por eso sus avisos sí se anuncian.
       this.shadowRoot.innerHTML = `<style>${css}</style><div class="sr" id="vivo" role="status"></div><div id="raiz"></div>`;
+      // Esc cancela el selector de proveedor y la recuperación de contraseña, y devuelve el foco al control de origen.
+      this.shadowRoot.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || !['selector', 'otra', 'olvide', 'enlace', 'nueva'].includes(this.#vista)) return;
+        e.stopPropagation();
+        this.#cancelar();
+      });
     }
     this.#pintar();
     emitirSesion(this.#usuario);
   }
 
-  // `foco`: 'titulo' (vista nueva), 'error' (primer campo inválido) o null (al cargar no se roba el foco).
+  // `foco`: 'titulo' (vista nueva), 'error' (primer campo inválido), { sel } (un control concreto, al cancelar)
+  // o null (al cargar no se roba el foco).
   #pintar(foco = null) {
     const raiz = this.shadowRoot.getElementById('raiz');
     const estado = { valores: this.#valores, errores: this.#errores, resumen: this.#resumen };
+    const exito = this.#exito;
+    this.#exito = '';
 
     if (this.#usuario) raiz.innerHTML = vistaSesion(this.#usuario);
-    else raiz.innerHTML = this.#vista === 'registro' ? vistaRegistro(estado) : vistaLogin(estado);
+    else {
+      const p = proveedor(this.#prov);
+      const vistas = {
+        login: () => vistaLogin({ ...estado, exito }),
+        registro: () => vistaRegistro(estado),
+        selector: () => vistaSelector({ proveedor: p, cuentas: cuentasDemo() }),
+        otra: () => vistaOtraCuenta({ ...estado, proveedor: p }),
+        olvide: () => vistaOlvide(estado),
+        enlace: () => vistaEnlace({ email: this.#recEmail }),
+        nueva: () => vistaClaveNueva(estado),
+      };
+      raiz.innerHTML = vistas[this.#vista]();
+    }
 
     this.#conectar(raiz);
 
     if (foco === 'titulo') enfocarTitulo(this.shadowRoot);
-    if (foco === 'error') {
+    else if (foco === 'error') {
       const primero = Object.keys(this.#errores)[0];
       if (primero) enfocarCampo(this.shadowRoot, primero);
-    }
+    } else if (foco?.sel) enfocarSelector(this.shadowRoot, foco.sel);
   }
 
   // Gestor de eventos de entrada: cada vista conecta solo los controles que tiene.
   #conectar(raiz) {
-    const en = (a, fn) => {
-      const el = raiz.querySelector(`[data-a="${a}"]`);
-      if (el) el.onclick = fn;
-    };
+    const en = (a, fn) => raiz.querySelectorAll(`[data-a="${a}"]`).forEach((el) => (el.onclick = () => fn(el)));
     const form = raiz.querySelector('form');
-    if (form) {
-      // El envío del formulario cubre el botón y la tecla Enter en cualquier campo.
+    // El envío del formulario cubre el botón y la tecla Enter en cualquier campo.
+    const envio = {
+      login: () => this.#entrar(),
+      registro: () => this.#alta(),
+      otra: () => this.#continuarOtra(),
+      olvide: () => this.#enviarEnlace(),
+      nueva: () => this.#guardarClave(),
+    }[this.#vista];
+    if (form && envio) {
       form.onsubmit = (e) => {
         e.preventDefault();
-        this.#vista === 'registro' ? this.#alta() : this.#entrar();
+        envio();
       };
     }
     en('demo', () => this.#abrirSesion(buscar(DEMO.email, DEMO.password)));
     en('ir-registro', () => this.#irA('registro'));
     en('ir-login', () => this.#irA('login'));
     en('out', () => this.#cerrarSesion());
-    raiz.querySelectorAll('[data-a="ver"]').forEach((b) => (b.onclick = () => this.#alternarClave(raiz, b)));
+    en('ver', (b) => this.#alternarClave(raiz, b));
+    en('prov', (b) => this.#abrirProveedor(b.dataset.p));
+    en('cuenta', (b) => this.#conProveedor(b.dataset.email));
+    en('otra', () => this.#ir('otra', 'titulo'));
+    en('olvide', () => this.#abrirOlvide());
+    en('abrir-enlace', () => this.#ir('nueva', 'titulo'));
+    en('cancelar', () => this.#cancelar());
+    en('volver-cuentas', () => this.#cancelar());
+  }
+
+  // Cambio de vista simple: limpia los errores y pinta.
+  #ir(vista, foco) {
+    this.#vista = vista;
+    this.#limpiarErrores();
+    this.#pintar(foco);
+  }
+
+  // Guarda lo escrito en la vista actual para no pedirlo de nuevo en la siguiente (WCAG 3.3.7).
+  #recordar() {
+    const r = this.shadowRoot;
+    if (this.#vista === 'login') this.#valores.email = leer(r, ['email']).email.trim();
+    else if (this.#vista === 'registro') {
+      const d = leer(r, ['reg-email', 'reg-nombre']);
+      this.#valores = { email: d['reg-email'].trim(), nombre: d['reg-nombre'].trim() };
+    } else if (this.#vista === 'olvide') this.#valores.email = leer(r, ['rec-email'])['rec-email'].trim();
+  }
+
+  // Esc o «Cancelar»: vuelve a la vista de origen y deja el foco en el control que la abrió.
+  #cancelar() {
+    if (this.#vista === 'selector') {
+      this.#vista = this.#origen;
+      this.#limpiarErrores();
+      this.#pintar({ sel: `[data-a="prov"][data-p="${this.#prov}"]` });
+    } else if (this.#vista === 'otra') {
+      this.#ir('selector', { sel: '[data-a="otra"]' });
+    } else {
+      this.#recordar();
+      this.#ir('login', { sel: '[data-a="olvide"]' });
+    }
   }
 
   // Mostrar/ocultar contraseña sin repintar: se conserva lo escrito y el foco queda en el botón.
@@ -126,12 +198,13 @@ class UcjcIdentidad extends HTMLElement {
     this.#abrirSesion(cuenta, 'Cuenta creada. ');
   }
 
-  #abrirSesion(cuenta, prefijo = '') {
+  // `via`: « con Google» cuando se entra con un proveedor simulado (solo cambia el texto del anuncio).
+  #abrirSesion(cuenta, prefijo = '', via = '') {
     this.#usuario = cuenta;
     this.#valores = { email: '', nombre: '' };
     this.#limpiarErrores();
     this.#pintar('titulo');
-    anunciar(this.shadowRoot, `${prefijo}Sesión iniciada como ${cuenta.nombre}.`);
+    anunciar(this.shadowRoot, `${prefijo}Sesión iniciada${via} como ${cuenta.nombre}.`);
     emitirSesion(this.#usuario);
   }
 
@@ -146,11 +219,59 @@ class UcjcIdentidad extends HTMLElement {
 
   // Entre «entrar» y «crear cuenta» el email ya escrito pasa de una vista a la otra (WCAG 3.3.7).
   #irA(vista) {
-    const campo = this.#vista === 'registro' ? 'reg-email' : 'email';
-    this.#valores.email = leer(this.shadowRoot, [campo])[campo].trim();
-    this.#vista = vista;
-    this.#limpiarErrores();
-    this.#pintar('titulo');
+    this.#recordar();
+    this.#ir(vista, 'titulo');
+  }
+
+  // --- Proveedores simulados (Google, Microsoft, GitHub): no hay red ni OAuth ---
+
+  #abrirProveedor(id) {
+    this.#recordar();
+    this.#origen = this.#vista;
+    this.#prov = id;
+    this.#ir('selector', 'titulo');
+  }
+
+  // Cuenta elegida: si el email ya existe se reutiliza su id; si no, se crea la cuenta simulada.
+  #conProveedor(email) {
+    const { cuenta, nueva } = entrarOCrear(email);
+    this.#abrirSesion(cuenta, nueva ? 'Cuenta creada. ' : '', ` con ${proveedor(this.#prov).nombre}`);
+  }
+
+  #continuarOtra() {
+    const datos = leer(this.shadowRoot, ['prov-email']);
+    this.#valores.email = datos['prov-email'].trim();
+    const v = validarEmail({ email: datos['prov-email'] }, 'prov-email');
+    if (!v.ok) return this.#fallar(v.errores, v.resumen);
+    this.#conProveedor(datos['prov-email']);
+  }
+
+  // --- Recuperar contraseña (modo demo): ningún paso emite sesion-cambiada@1 ---
+
+  #abrirOlvide() {
+    this.#recordar();
+    this.#ir('olvide', 'titulo');
+  }
+
+  #enviarEnlace() {
+    const datos = leer(this.shadowRoot, ['rec-email']);
+    this.#valores.email = datos['rec-email'].trim();
+    const v = validarEmail({ email: datos['rec-email'] }, 'rec-email');
+    if (!v.ok) return this.#fallar(v.errores, v.resumen);
+    this.#recEmail = this.#valores.email;
+    this.#ir('enlace', 'titulo'); // mismo aviso exista o no el email
+  }
+
+  #guardarClave() {
+    const datos = leer(this.shadowRoot, ['nueva-password']);
+    const v = validarClaveNueva({ password: datos['nueva-password'] });
+    if (!v.ok) return this.#fallar(v.errores, v.resumen);
+    cambiarPassword(this.#recEmail, datos['nueva-password']); // si el email no existe no pasa nada, y no se dice
+    const texto = 'Contraseña cambiada. Inicia sesión con la nueva.';
+    this.#valores.email = this.#recEmail;
+    this.#exito = texto;
+    this.#ir('login', 'titulo');
+    anunciar(this.shadowRoot, texto);
   }
 }
 

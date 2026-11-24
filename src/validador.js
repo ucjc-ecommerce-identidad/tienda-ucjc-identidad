@@ -61,3 +61,20 @@ export function validarRegistro({ email = '', nombre = '', password = '' }) {
     : 'El email no tiene un formato válido. ' + PISTA_EMAIL;
   return resultado(errores, resumen);
 }
+
+// Solo el email (recuperar contraseña y «usar otra cuenta» de un proveedor). `campo` es el data-f del campo.
+export function validarEmail({ email = '' }, campo) {
+  const mail = email.trim();
+  if (!mail) return resultado([{ campo, mensaje: `Escribe tu email. ${PISTA_EMAIL}` }], 'Escribe tu email para continuar.');
+  if (!EMAIL_OK.test(mail)) {
+    return resultado([{ campo, mensaje: `Al email le falta la @ o el dominio. ${PISTA_EMAIL}` }], `El email no tiene un formato válido. ${PISTA_EMAIL}`);
+  }
+  return resultado([], '');
+}
+
+// Contraseña nueva (recuperación): mismas reglas que el registro, que solo pide que no esté vacía.
+export function validarClaveNueva({ password = '' }) {
+  return password
+    ? resultado([], '')
+    : resultado([{ campo: 'nueva-password', mensaje: 'Elige una contraseña nueva.' }], 'Elige una contraseña nueva para continuar.');
+}

@@ -1,9 +1,11 @@
 // ROL: creador de nodos (plantillas).
-// Qué hace: construye el HTML de cada vista (entrar, crear cuenta, sesión activa) a partir del estado que recibe.
+// Qué hace: construye el HTML de cada vista (entrar, crear cuenta, sesión activa, selector de cuenta de un proveedor,
+//   recuperar contraseña) a partir del estado que recibe.
 // Qué no hace: no guarda estado, no registra eventos, no valida y no mueve el foco. Todo texto de la persona se escapa.
 // Qué toca: nada; devuelve cadenas de HTML.
 
 import { atributosCampo, idAyuda } from './accesibilidad.js';
+import { PROVEEDORES } from './proveedores.js';
 
 // Escapa texto antes de meterlo en innerHTML (el nombre y el email los escribe la persona).
 export const esc = (t) =>
@@ -14,6 +16,8 @@ const svg = (cuerpo, clase = '') =>
 
 const ICONO_CANDADO = svg('<rect x="4" y="11" width="16" height="10" rx="2"/><path class="arco" d="M8 11V7a4 4 0 0 1 8 0v4"/>');
 const ICONO_AVISO = svg('<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/>');
+const ICONO_INFO = svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/>');
+const ICONO_OK = svg('<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/>');
 const ICONO_SALIR = svg('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/>');
 const ICONO_OJO =
   svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', 'visto') +
@@ -61,18 +65,33 @@ const clave = (f, etiqueta, auto, errores) => `
   </div>
   ${ayuda(f, errores)}`;
 
-export function vistaLogin({ valores, errores, resumen }) {
+// Aviso informativo (no es un error): «modo demo», confirmaciones...
+const aviso = (texto, icono = ICONO_INFO) => `<p class="aviso">${icono}<span>${texto}</span></p>`;
+
+// Fila de proveedores bajo una etiqueta («o continúa con»). Cada botón se nombra por su texto; el logo es decorativo.
+const filaProveedores = (etiqueta) => `
+  <div class="separa" id="etq-prov">${etiqueta}</div>
+  <div class="provs" role="group" aria-labelledby="etq-prov">
+    ${PROVEEDORES.map((p) => `<button type="button" class="prov" data-a="prov" data-p="${p.id}">${p.logo}<span>${p.nombre}</span></button>`).join('')}
+  </div>`;
+
+const volver = (texto = 'Volver a iniciar sesión') =>
+  `<p class="pie"><button type="button" data-a="cancelar" class="enlace">${texto}</button></p>`;
+
+export function vistaLogin({ valores, errores, resumen, exito }) {
   return `
     <form class="box" novalidate aria-labelledby="titulo-login">
       ${cabecera('titulo-login', 'Inicia sesión')}
       <p class="estado ko">Sin sesión</p>
+      ${exito ? aviso(esc(exito), ICONO_OK) : ''}
       ${resumenErrores(resumen)}
       ${campo('email', 'Email', { tipo: 'email', auto: 'username', entrada: 'email', valor: valores.email, errores })}
       ${clave('password', 'Contraseña', 'current-password', errores)}
+      <p class="olvide"><button type="button" data-a="olvide" class="enlace">¿Olvidaste tu contraseña?</button></p>
       <div class="acciones">
         <button type="submit" data-a="in">Iniciar sesión</button>
-        <div class="separa">o</div>
         <button type="button" data-a="demo" class="sec">Entrar con la cuenta demo</button>
+        ${filaProveedores('o continúa con')}
       </div>
       <p class="pie">¿No tienes cuenta? <button type="button" data-a="ir-registro" class="enlace">Crear cuenta</button></p>
     </form>`;
@@ -88,8 +107,86 @@ export function vistaRegistro({ valores, errores, resumen }) {
       ${clave('reg-password', 'Contraseña', 'new-password', errores)}
       <div class="acciones">
         <button type="submit" data-a="registrar">Registrarme</button>
+        ${filaProveedores('o regístrate con')}
       </div>
       <p class="pie">¿Ya tienes cuenta? <button type="button" data-a="ir-login" class="enlace">Volver a iniciar sesión</button></p>
+    </form>`;
+}
+
+// Selector de cuenta de un proveedor (simulado): las cuentas demo y «Usar otra cuenta».
+export function vistaSelector({ proveedor, cuentas }) {
+  const fila = (c) => `
+    <li><button type="button" class="cuenta" data-a="cuenta" data-email="${esc(c.email)}">
+      <span class="av" aria-hidden="true">${esc(iniciales(c.nombre))}</span>
+      <span class="txt"><span class="nombre">${esc(c.nombre)}</span><span class="correo">${esc(c.email)}</span></span>
+    </button></li>`;
+  return `
+    <section class="box" aria-labelledby="titulo-selector">
+      ${cabecera('titulo-selector', `Elige una cuenta de ${proveedor.nombre}`)}
+      ${aviso(`Modo demo: no contacta con ${proveedor.nombre}.`)}
+      <ul class="cuentas">
+        ${cuentas.map(fila).join('')}
+        <li><button type="button" class="cuenta" data-a="otra">
+          <span class="av" aria-hidden="true">+</span><span class="txt"><span class="nombre">Usar otra cuenta</span></span>
+        </button></li>
+      </ul>
+      ${volver('Cancelar')}
+    </section>`;
+}
+
+export function vistaOtraCuenta({ proveedor, valores, errores, resumen }) {
+  return `
+    <form class="box" novalidate aria-labelledby="titulo-otra">
+      ${cabecera('titulo-otra', `Usar otra cuenta de ${proveedor.nombre}`)}
+      ${aviso(`Modo demo: no contacta con ${proveedor.nombre}.`)}
+      ${resumenErrores(resumen)}
+      ${campo('prov-email', 'Email', { tipo: 'email', auto: 'email', entrada: 'email', valor: valores.email, errores })}
+      <div class="acciones">
+        <button type="submit" data-a="continuar">Continuar</button>
+      </div>
+      <p class="pie"><button type="button" data-a="volver-cuentas" class="enlace">Volver a elegir cuenta</button></p>
+    </form>`;
+}
+
+// Recuperar contraseña (modo demo): email -> aviso neutro -> enlace del correo (demo) -> contraseña nueva.
+export function vistaOlvide({ valores, errores, resumen }) {
+  return `
+    <form class="box" novalidate aria-labelledby="titulo-olvide">
+      ${cabecera('titulo-olvide', 'Recupera tu contraseña')}
+      ${aviso('Modo demo: no se envía ningún correo.')}
+      ${resumenErrores(resumen)}
+      ${campo('rec-email', 'Email de tu cuenta', { tipo: 'email', auto: 'email', entrada: 'email', valor: valores.email, errores })}
+      <div class="acciones">
+        <button type="submit" data-a="enviar-enlace">Enviar enlace</button>
+      </div>
+      ${volver()}
+    </form>`;
+}
+
+// El texto es el mismo exista o no el email: no se revela qué cuentas hay.
+export function vistaEnlace({ email }) {
+  return `
+    <section class="box" aria-labelledby="titulo-enlace">
+      ${cabecera('titulo-enlace', 'Revisa tu correo')}
+      ${aviso('Modo demo: no se ha enviado ningún correo.')}
+      <p class="texto">Si <strong>${esc(email)}</strong> está registrado, recibirá un enlace para elegir una contraseña nueva.</p>
+      <div class="acciones">
+        <button type="button" data-a="abrir-enlace">Abrir el enlace del correo (demo)</button>
+      </div>
+      ${volver()}
+    </section>`;
+}
+
+export function vistaClaveNueva({ errores, resumen }) {
+  return `
+    <form class="box" novalidate aria-labelledby="titulo-nueva">
+      ${cabecera('titulo-nueva', 'Elige una contraseña nueva')}
+      ${resumenErrores(resumen)}
+      ${clave('nueva-password', 'Contraseña nueva', 'new-password', errores)}
+      <div class="acciones">
+        <button type="submit" data-a="guardar-clave">Guardar contraseña</button>
+      </div>
+      ${volver()}
     </form>`;
 }
 
