@@ -7,7 +7,7 @@ describe('ucjc-identidad', () => {
   });
 
   it('exporta metadatos de carga', () => {
-    expect(mod).toEqual({ nombre: 'identidad', version: '0.2.6' });
+    expect(mod).toEqual({ nombre: 'identidad', version: '0.2.7' });
   });
 
   it('emite sesion-cambiada al conectar y al login demo', async () => {
