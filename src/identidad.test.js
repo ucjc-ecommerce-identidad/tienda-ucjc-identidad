@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import mod from './main.js';
+import pkg from '../package.json';
 
 describe('ucjc-identidad', () => {
   beforeEach(() => {
@@ -7,7 +8,8 @@ describe('ucjc-identidad', () => {
   });
 
   it('exporta metadatos de carga', () => {
-    expect(mod).toEqual({ nombre: 'identidad', version: '0.2.7' });
+    // La versión sale de package.json: así el test no se rompe al subir de versión y avisa si main.js se queda atrás.
+    expect(mod).toEqual({ nombre: 'identidad', version: pkg.version });
   });
 
   it('emite sesion-cambiada al conectar y al login demo', async () => {
