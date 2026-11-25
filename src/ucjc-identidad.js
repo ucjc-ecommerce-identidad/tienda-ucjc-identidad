@@ -11,7 +11,7 @@
 
 import { css } from './estilos.js';
 import {
-  vistaLogin, vistaRegistro, vistaSesion, vistaSelector, vistaOtraCuenta, vistaOlvide, vistaEnlace, vistaClaveNueva, FONDO,
+  vistaLogin, vistaRegistro, vistaSesion, vistaSelector, vistaOtraCuenta, vistaOlvide, vistaEnlace, vistaClaveNueva,
 } from './vistas.js';
 import { proveedor } from './proveedores.js';
 import { leer } from './lector.js';
@@ -34,12 +34,14 @@ class UcjcIdentidad extends HTMLElement {
   #desde = null; // hora de inicio de la sesión (solo para mostrarla; no sale en el evento)
 
   connectedCallback() {
+    // Contrato presentacion-campus@1: el shell deja window.ucjcCampus. Si no está (demo, tests), la pieza sigue con los valores de reserva.
+    if (window.ucjcCampus?.version !== '1') console.warn('[identidad] sin campus: uso los valores de reserva y window.dispatchEvent');
     // El shell puede quitar y volver a poner el elemento: el shadow root solo se crea una vez.
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
       // La región viva vive fuera de #raiz: no se repinta y por eso sus avisos sí se anuncian.
       this.shadowRoot.innerHTML = `<style>${css}</style><div class="sr" id="vivo" role="status"></div>
-        <div class="escena">${FONDO}<div class="contenedor"><div id="raiz"></div></div></div>`;
+        <div class="escena"><div class="contenedor"><div id="raiz"></div></div></div>`;
       // Esc cancela el selector de proveedor y la recuperación de contraseña, y devuelve el foco al control de origen.
       this.shadowRoot.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape' || !['selector', 'otra', 'olvide', 'enlace', 'nueva'].includes(this.#vista)) return;

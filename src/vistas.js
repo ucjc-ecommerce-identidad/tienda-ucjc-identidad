@@ -1,6 +1,6 @@
 // ROL: creador de nodos (plantillas).
 // Qué hace: construye el HTML de cada vista (entrar, crear cuenta, sesión activa, selector de cuenta de un proveedor,
-//   recuperar contraseña) a partir del estado que recibe, y el fondo de la pieza (formas decorativas y quietas).
+//   recuperar contraseña) a partir del estado que recibe.
 //   Todas las vistas usan la misma tarjeta de cristal (.tarjeta) con el logo arriba.
 // Qué no hace: no guarda estado, no registra eventos, no valida y no mueve el foco. Todo texto de la persona se escapa.
 // Qué toca: nada; devuelve cadenas de HTML.
@@ -41,17 +41,6 @@ const ICONO_FLECHA = svg('<path d="M5 12h14M13 6l6 6-6 6"/>', 'flecha');
 
 // Botón principal: al pasar el ratón entra una flecha (decorativa) que empuja el texto.
 const principal = (a, texto) => `<button type="submit" class="btn" data-a="${a}"><span>${texto}</span>${ICONO_FLECHA}</button>`;
-
-// Fondo propio de la pieza: cápsulas y esferas con volumen, QUIETAS y decorativas, ancladas a distancias fijas
-// (no se recolocan aunque cambie la vista). Las que cruzan la tarjeta
-// pasan por sus márgenes laterales, donde no hay texto, para que se vean a través del cristal.
-export const FONDO = `
-  <div class="formas" aria-hidden="true">
-    <span class="fm capsula osc f1"></span><span class="fm capsula osc f2"></span>
-    <span class="fm capsula clara f3"></span><span class="fm capsula clara f4"></span><span class="fm capsula clara f5"></span>
-    <span class="fm esfera clara f6"></span><span class="fm esfera osc f7"></span><span class="fm esfera clara f8"></span>
-    <span class="fm capsula clara f9"></span><span class="fm esfera clara f10"></span>
-  </div>`;
 
 // Resumen de errores de arriba: se anuncia solo (role="alert") y los campos lo señalan con aria-describedby.
 const resumenErrores = (texto) =>

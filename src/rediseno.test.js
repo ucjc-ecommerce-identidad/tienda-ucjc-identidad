@@ -24,13 +24,11 @@ beforeEach(() => {
 });
 
 describe('estructura del cristal', () => {
-  it('fondo propio con formas decorativas y la vista dentro de la escena', () => {
+  it('fondo liso y la vista dentro de la escena', () => {
     const { el, fin } = montar();
     const escena = q(el, '.escena');
     expect(escena).not.toBeNull();
-    const formas = escena.querySelector('.formas');
-    expect(formas.getAttribute('aria-hidden')).toBe('true');
-    expect(formas.querySelectorAll('.fm')).toHaveLength(10);
+    expect(escena.querySelector('.formas, .fm')).toBeNull();
     expect(escena.querySelector('.contenedor #raiz .tarjeta')).not.toBeNull();
     // la región viva queda fuera de lo que se repinta
     expect(escena.contains(el.shadowRoot.getElementById('vivo'))).toBe(false);
@@ -176,12 +174,5 @@ describe('reglas del CSS', () => {
     const resto = fueraDeMovimiento();
     expect(resto.match(/animation:(?!none)/g)).toBeNull();
     expect(css).toContain('@media (prefers-reduced-motion:reduce)');
-  });
-
-  it('las formas del fondo son estáticas (ninguna regla las anima)', () => {
-    const reglas = css.match(/[^{}]+\{[^{}]*\}/g) || [];
-    const deFormas = reglas.filter((r) => /\.(fm|formas|capsula|esfera|f\d+)\b/.test(r.split('{')[0]));
-    expect(deFormas.length).toBeGreaterThan(0);
-    for (const r of deFormas) expect(r).not.toMatch(/animation|transition/);
   });
 });
